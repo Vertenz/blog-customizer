@@ -1,11 +1,11 @@
-import { useLayoutEffect, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-	ArticleStateType,
 	fontFamilyOptions,
 	fontSizeOptions,
 	fontColors,
 	backgroundColors,
 	contentWidthArr,
+	defaultArticleState,
 } from 'src/constants/articleProps';
 import { ArrowButton } from 'src/ui/arrow-button';
 import { Button } from 'src/ui/button';
@@ -16,60 +16,93 @@ import clsx from 'clsx';
 import styles from './ArticleParamsForm.module.scss';
 
 interface ArticleParamsFormProps {
-	params: ArticleStateType;
-	handleSubmit: (values: ArticleStateType) => void;
-	handleReset: () => void;
+	containerRef: React.RefObject<HTMLElement>;
 }
 
-export const ArticleParamsForm = (props: ArticleParamsFormProps) => {
-	const [isOpen, setIsOpen] = useState(false);
-	const [fontFamily, setFontFamily] = useState(props.params.fontFamilyOption);
-	const [fontSize, setFontSize] = useState(props.params.fontSizeOption);
-	const [fontColor, setFontColor] = useState(props.params.fontColor);
-	const [backgroundColor, setBackgroundColor] = useState(
-		props.params.backgroundColor
+export const ArticleParamsForm = ({ containerRef }: ArticleParamsFormProps) => {
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [fontFamily, setFontFamily] = useState(
+		defaultArticleState.fontFamilyOption
 	);
-	const [contentWidth, setContentWidth] = useState(props.params.contentWidth);
+	const [fontSize, setFontSize] = useState(defaultArticleState.fontSizeOption);
+	const [fontColor, setFontColor] = useState(defaultArticleState.fontColor);
+	const [backgroundColor, setBackgroundColor] = useState(
+		defaultArticleState.backgroundColor
+	);
+	const [contentWidth, setContentWidth] = useState(
+		defaultArticleState.contentWidth
+	);
+	const formRef = useRef<HTMLDivElement>(null);
 
-	useLayoutEffect(() => {
-		setFontFamily(props.params.fontFamilyOption);
-		setFontSize(props.params.fontSizeOption);
-		setFontColor(props.params.fontColor);
-		setBackgroundColor(props.params.backgroundColor);
-		setContentWidth(props.params.contentWidth);
-	}, [props.params]);
+	useEffect(() => {
+		if (!isMenuOpen) return;
+
+		const handleClickOutside = (event: MouseEvent) => {
+			const { target } = event;
+			if (target instanceof Node && !formRef.current?.contains(target)) {
+				setIsMenuOpen(false);
+			}
+		};
+
+		window.addEventListener('mousedown', handleClickOutside);
+
+		return () => {
+			window.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [isMenuOpen]);
 
 	const asideStyle = clsx({
 		[styles.container]: true,
-		[styles.container_open]: isOpen,
+		[styles.container_open]: isMenuOpen,
 	});
 
 	const handleButtonClick = () => {
-		setIsOpen((currentValue) => !currentValue);
+		setIsMenuOpen((currentValue) => !currentValue);
 	};
 
-	const getValues = (): ArticleStateType => ({
-		fontFamilyOption: fontFamily,
-		fontSizeOption: fontSize,
-		fontColor: fontColor,
-		backgroundColor: backgroundColor,
-		contentWidth: contentWidth,
-	});
+	const setStyles = (): void => {
+		if (!containerRef.current) return;
+
+		const style = containerRef.current.style;
+		style.setProperty('--font-family', fontFamily.value);
+		style.setProperty('--font-size', fontSize.value);
+		style.setProperty('--font-color', fontColor.value);
+		style.setProperty('--container-width', contentWidth.value);
+		style.setProperty('--bg-color', backgroundColor.value);
+	};
 
 	const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		props.handleSubmit(getValues());
+		setStyles();
 	};
 
 	const onReset = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		props.handleReset();
+		setFontFamily(defaultArticleState.fontFamilyOption);
+		setFontSize(defaultArticleState.fontSizeOption);
+		setFontColor(defaultArticleState.fontColor);
+		setBackgroundColor(defaultArticleState.backgroundColor);
+		setContentWidth(defaultArticleState.contentWidth);
+
+		if (!containerRef.current) return;
+		const style = containerRef.current.style;
+		style.setProperty(
+			'--font-family',
+			defaultArticleState.fontFamilyOption.value
+		);
+		style.setProperty('--font-size', defaultArticleState.fontSizeOption.value);
+		style.setProperty('--font-color', defaultArticleState.fontColor.value);
+		style.setProperty(
+			'--container-width',
+			defaultArticleState.contentWidth.value
+		);
+		style.setProperty('--bg-color', defaultArticleState.backgroundColor.value);
 	};
 
 	return (
 		<>
-			<ArrowButton isOpen={isOpen} onClick={handleButtonClick} />
-			<aside className={asideStyle}>
+			<ArrowButton isOpen={isMenuOpen} onClick={handleButtonClick} />
+			<aside ref={formRef} className={asideStyle}>
 				<form onSubmit={onSubmit} onReset={onReset} className={styles.form}>
 					<Select
 						title='шрифт'
@@ -81,7 +114,7 @@ export const ArticleParamsForm = (props: ArticleParamsFormProps) => {
 					<RadioGroup
 						title='размер шрифта'
 						options={fontSizeOptions}
-						name='fontSizeOption '
+						name='fontSizeOption'
 						selected={fontSize}
 						onChange={setFontSize}
 					/>
